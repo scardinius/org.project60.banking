@@ -155,18 +155,20 @@ class CRM_Banking_Matcher_Context {
 
       // then, look up party_ba_reference...
       $data_parsed = $this->btx->getDataParsed();
+      // TODO: isn't party_ba_reference still being used?
       if (!empty($data_parsed['party_ba_reference'])) {
-        // find all accounts references matching the parsed data
-        $account_references = civicrm_api('BankAccountReference', 'get', array('reference' => $data_parsed['party_ba_reference'], 'version' => 3));
-        if (empty($account_references['is_error'])) {
-          foreach ($account_references['values'] as $account_reference) {
-            // then load the respective accounts
-            $account = civicrm_api('BankAccount', 'getsingle', array('id' => $account_reference['ba_id'], 'version' => 3));
-            if (empty($account['is_error'])) {
-              // and add the owner
-              array_push($contact_ids, $account['contact_id']);
-            }
-          }
+        // USE SQL for the lookup
+        $account_query = CRM_Core_DAO::executeQuery("
+          SELECT DISTINCT(civicrm_contact.id) AS contact_id
+          FROM civicrm_bank_account_reference
+          LEFT JOIN civicrm_bank_account ON civicrm_bank_account_reference.ba_id = civicrm_bank_account.id
+          LEFT JOIN civicrm_contact ON civicrm_contact.id = civicrm_bank_account.contact_id
+          WHERE civicrm_contact.is_deleted = 0
+            AND civicrm_bank_account_reference.reference = %1
+            LIMIT 10",
+          array(1 => array($data_parsed['party_ba_reference'], 'String')));
+        while ($account_query->fetch()) {
+          $contact_ids[] = $account_query->contact_id;
         }
       }
 
@@ -183,16 +185,17 @@ class CRM_Banking_Matcher_Context {
   public function getAccountContact() {
     $contact_id = $this->getCachedEntry('_account_contact_id');
     if ($contact_id===NULL) {
+      $contact_id = 0;
       if ($this->btx->party_ba_id) {
         $account = new CRM_Banking_BAO_BankAccount();
         $account->get('id', $this->btx->party_ba_id);
         if ($account->contact_id) {
-          $contact_id = $account->contact_id;
-        } else {
-          $contact_id = 0;
+          // make sure the contact ID exists and is not deleted
+          $contact_check = civicrm_api3('Contact', 'get', array('id' => $account->contact_id, 'return' => 'id'));
+          if ($contact_check['count']) {
+            $contact_id = $account->contact_id;
+          }
         }
-      } else {
-        $contact_id = 0;
       }
       $this->setCachedEntry('_account_contact_id', $contact_id);
     }
