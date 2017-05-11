@@ -191,7 +191,10 @@ class CRM_Banking_Matcher_Context {
         $account->get('id', $this->btx->party_ba_id);
         if ($account->contact_id) {
           // make sure the contact ID exists and is not deleted
-          $contact_check = civicrm_api3('Contact', 'get', array('id' => $account->contact_id, 'return' => 'id'));
+          $contact_check = civicrm_api3('Contact', 'get', array(
+            'id'         => $account->contact_id,
+            'is_deleted' => 0,
+            'return'     => 'id'));
           if ($contact_check['count']) {
             $contact_id = $account->contact_id;
           }
