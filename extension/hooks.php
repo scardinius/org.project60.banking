@@ -243,7 +243,11 @@ function banking_civicrm_alterAPIPermissions($entity, $action, &$params, &$permi
 function banking_civicrm_get_max_nav_id($menu) {
   $max_id = 1;
   foreach ($menu as $entry) {
-    $max_id = max($max_id, $entry['attributes']['navID']);
+    $fixId = 0;
+    if (array_key_exists('navID', $entry['attributes'])) {
+      $fixId = $entry['attributes']['navID'];
+    }
+    $max_id = max($max_id, $fixId);
     if (!empty($entry['child'])) {
       $max_id_children = banking_civicrm_get_max_nav_id($entry['child']);
       $max_id = max($max_id, $max_id_children);
