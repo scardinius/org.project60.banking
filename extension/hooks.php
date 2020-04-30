@@ -21,6 +21,18 @@ use CRM_Banking_ExtensionUtil as E;
  */
 
 /**
+ * Implements hook_civicrm_permission().
+ */
+function banking_civicrm_permission(&$permissions) {
+  $permissions += [
+    'Display Account Tab' => [
+      E::ts('CiviBanking: Display Account Tab'),
+      E::ts('Display Account Tab on contact view page'),
+    ],
+  ];
+}
+
+/**
  * Implements hook_civicrm_navigationMenu().
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_navigationMenu
@@ -142,14 +154,16 @@ function banking_civicrm_entityTypes(&$entityTypes) {
 
 
 function banking_civicrm_tabs( &$tabs, $contactID ) {
-  $count_query = CRM_Core_DAO::executeQuery("SELECT COUNT(id) AS acCount FROM civicrm_bank_account WHERE contact_id=$contactID;");
-  $count_query->fetch();
-  array_push($tabs, array(
-    'id' =>       'bank_accounts',
-    'url' =>      CRM_Utils_System::url('civicrm/banking/accounts_tab', "snippet=1&amp;cid=$contactID"),
-    'title' =>    E::ts("Bank Accounts"),
-    'weight' =>   95,
-    'count' =>    $count_query->acCount));
+  if (CRM_Core_Permission::check('Display Account Tab')) {
+    $count_query = CRM_Core_DAO::executeQuery("SELECT COUNT(id) AS acCount FROM civicrm_bank_account WHERE contact_id=$contactID;");
+    $count_query->fetch();
+    array_push($tabs, array(
+      'id' =>       'bank_accounts',
+      'url' =>      CRM_Utils_System::url('civicrm/banking/accounts_tab', "snippet=1&amp;cid=$contactID"),
+      'title' =>    E::ts("Bank Accounts"),
+      'weight' =>   95,
+      'count' =>    $count_query->acCount));
+  }
 }
 
 
